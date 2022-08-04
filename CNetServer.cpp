@@ -354,6 +354,8 @@ inline void CNetServer::RunIoThread()
 					PacketPtr packet = CPacket::Alloc();
 					int ret_deq = session->recv_q.Dequeue((*packet)->GetBufferPtr(), header.len);
 					(*packet)->MoveWritePos(ret_deq);
+					(*packet)->Decode();
+
 					QueryPerformanceCounter(&on_recv_st);
 					OnRecv(*(unsigned long long*)&session->session_id, packet);
 					QueryPerformanceCounter(&on_recv_ed);
@@ -362,6 +364,8 @@ inline void CNetServer::RunIoThread()
 					CPacket* packet = CPacket::Alloc();
 					int ret_deq = session->recv_q.Dequeue(packet->GetBufferPtr(), header.len);
 					packet->MoveWritePos(ret_deq);
+					packet->Decode();
+
 					QueryPerformanceCounter(&on_recv_st);
 					OnRecv(*(unsigned long long*) &session->session_id, packet);
 					QueryPerformanceCounter(&on_recv_ed);
@@ -439,6 +443,9 @@ bool CNetServer::SendPacket(unsigned long long session_id, PacketPtr packet)
 
 	unsigned short idx = session_id >> INDEX_BIT_SHIFT;
 	unsigned int id = session_id & ID_MASK;
+
+	(*packet)->Encode();
+
 #ifndef STACK_INDEX
 
 	for (idx = 0; idx < _max_client; idx++)
@@ -480,13 +487,15 @@ bool CNetServer::SendPacket(unsigned long long session_id, PacketPtr packet)
 	return ret;
 }
 #else
-bool CLanServer::SendPacket(unsigned long long session_id, CPacket* packet)
+bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 {
 	monitor.IncSendPacket();
 	bool ret = false;
 
 	unsigned short idx = session_id >> INDEX_BIT_SHIFT;
 	unsigned int id = session_id & ID_MASK;
+
+	packet->Encode();
 
 #ifndef STACK_INDEX
 
@@ -649,8 +658,8 @@ inline bool CNetServer::SendPost(Session* session)
 			if (session->send_q.Dequeue(&packet) == false) continue;
 			
 
-			wsabuf[cnt].buf = (*packet)->GetBufferPtrLan();
-			wsabuf[cnt].len = (*packet)->GetDataSizeLan();
+			wsabuf[cnt].buf = (*packet)->GetBufferPtrNet();
+			wsabuf[cnt].len = (*packet)->GetDataSizeNet();
 			session->temp_packet[cnt] = packet;
 
 			++cnt;
@@ -661,8 +670,8 @@ inline bool CNetServer::SendPost(Session* session)
 		{
 			if (!session->send_q.Dequeue(&packet)) continue;
 			
-			wsabuf[cnt].buf = packet->GetBufferPtrWithHeader();
-			wsabuf[cnt].len = packet->GetDataSizeWithHeader();
+			wsabuf[cnt].buf = packet->GetBufferPtrNet();
+			wsabuf[cnt].len = packet->GetDataSizeNet();
 			session->temp_packet[cnt] = packet;
 
 			++cnt;

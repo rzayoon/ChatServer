@@ -20,9 +20,6 @@ class ChatServer : public CNetServer
 
 	void OnSend(unsigned long long session_id, int send_size);
 
-	void OnStartServer();
-	void OnStopServer();
-
 	void OnWorkerThreadBegin();
 	void OnWorkerThreadEnd();
 

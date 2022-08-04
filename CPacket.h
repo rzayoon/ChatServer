@@ -5,7 +5,7 @@
 #include "LockFreePool.h"
 #include "MemoryPoolTls.h"
 
-#define AUTO_PACKET
+//#define AUTO_PACKET
 
 
 
@@ -130,6 +130,13 @@ public:
 		CPacket* packet = packet_pool.Alloc();
 		packet->Clear();
 		return packet;
+	}
+
+	inline static void Free(CPacket* packet)
+	{
+		packet->SubRef();
+
+		return;
 	}
 
 	inline void AddRef()

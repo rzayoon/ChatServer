@@ -4,10 +4,20 @@
 
 typedef unsigned long long SID;
 
+struct JOB
+{
+	SID id;
 #ifdef AUTO_PACKET
-extern LockFreeQueue<pair<SID, PacketPtr>> g_JobQueue;
+	PacketPtr packet;
 #else
-extern LockFreeQueue<pair<SID, CPacket*>> g_JobQueue;
+	CPacket* packet;
 #endif
+};
+ 
+
+
+extern MemoryPoolTls<JOB> g_JobPool;
+extern LockFreeQueue<JOB*> g_JobQueue;
+
 
 unsigned __stdcall SingleUpdate(void* param);
