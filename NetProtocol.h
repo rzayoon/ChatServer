@@ -1,9 +1,6 @@
 #pragma once
 
 
-#define FIX_KEY 0xa9
-#define PACKET_CODE 0x00
-
 #pragma pack(push, 1)
 
 struct LanPacketHeader

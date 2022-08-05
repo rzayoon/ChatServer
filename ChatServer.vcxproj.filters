@@ -45,6 +45,9 @@
     <ClCompile Include="ChatLogic.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="User.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CNetServer.h">
@@ -68,7 +71,7 @@
     <ClInclude Include="monitor.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Protocol.h">
+    <ClInclude Include="NetProtocol.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="RingBuffer.h">
@@ -87,6 +90,12 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="ChatLogic.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="User.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="ChatProtocol.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

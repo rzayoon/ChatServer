@@ -60,7 +60,7 @@ public:
 	void UpdateMaxIOCount(int temp);
 	void UpdateSendPacket(LONG size);
 
-	void Show(int session_cnt);
+	void Show(int session_cnt, int packet_pool);
 
 private:
 

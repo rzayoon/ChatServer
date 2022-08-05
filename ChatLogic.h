@@ -6,6 +6,13 @@ typedef unsigned long long SID;
 
 struct JOB
 {
+	enum
+	{
+
+		CONTENTS = 1
+	};
+
+	char type;
 	SID id;
 #ifdef AUTO_PACKET
 	PacketPtr packet;

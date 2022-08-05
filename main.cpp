@@ -9,14 +9,14 @@
 #include <stdio.h>
 #include <conio.h>
 
-#include "EchoServer.h"
+#include "ChatServer.h"
 #include "TextParser.h"
 
 
 
 #define SERVERPORT 6000
 
-EchoServer server;
+ChatServer server;
 
 int main()
 {
@@ -28,23 +28,30 @@ int main()
 	int worker;
 	int max_worker;
 	int max_user;
-	int nagle;
+	int max_session;
+	unsigned char packet_code;
+	unsigned char packet_key;
 
 	TextParser parser;
 	if (!parser.LoadFile("Config.ini")) return 1;
 
 	parser.GetStringValue("ServerBindIP", ip, 16);
 	parser.GetValue("ServerBindPort", (int*)&port);
-	parser.GetValue("WorkerThread", &worker);
-	parser.GetValue("MaxWorkerThread", &max_worker);
+	parser.GetValue("IOCPWorkerThread", &worker);
+	parser.GetValue("IOCPActiveThread", &max_worker);
 	parser.GetValue("MaxUser", &max_user);
-	parser.GetValue("Nagle", &nagle);
+	parser.GetValue("MaxSession", &max_session);
+	parser.GetValue("PacketCode", (int*)&packet_code);
+	parser.GetValue("PacketKey", (int*)&packet_key);
+	// packet code, fix_key
+
+
 
 	wchar_t wip[16];
 
 	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
 
-	server.Start(wip, port, worker, max_worker, nagle, max_user);
+	server.Start(wip, port, worker, max_worker, max_session, max_user, packet_key, packet_code);
 
 	DWORD oldTick = timeGetTime();
 	while (1)

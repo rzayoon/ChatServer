@@ -8,30 +8,42 @@
 
 #include "LockFreeQueue.h"
 #include "CNetServer.h"
-#include "Protocol.h"
+#include "NetProtocol.h"
 
 
 long long packet_counter[101];
 int log_arr[100];
 
-bool CNetServer::Start(const wchar_t* _ip, unsigned short _port, int _num_create_worker, int _num_run_worker, bool _nagle, int _max_client)
+bool CNetServer::Start(const wchar_t* _ip, unsigned short _port,
+	int _iocp_worker, int _iocp_active, int _max_session, int _max_user,
+	unsigned char _packet_key, unsigned char _packet_code)
 {
 	if (isRunning)
 	{
 		OnError(90, L"Duplicate Start Request\n");
 	}
-	max_client = _max_client;
+	nagle = true;
+
+	max_session = _max_session;
+	max_user = _max_user;
 	wcscpy_s(ip, _ip);
 	port = _port;
-	nagle = _nagle;
-	max_worker = _num_run_worker;
-	num_of_worker = _num_create_worker;
+	
+	iocp_active = _iocp_active;
+	iocp_worker = _iocp_worker;
+
+	packet_key = _packet_key;
+	packet_code = _packet_code;
+
+	CPacket::SetPacketCode(packet_code);
+	CPacket::SetPacketKey(packet_key);
+
 	exit_flag = false;
 
-	session_arr = new Session[max_client];
+	session_arr = new Session[max_session];
 
 #ifdef STACK_INDEX
-	for (int i = 0; i < _max_client; i++)
+	for (int i = 0; i < max_session; i++)
 		empty_session_stack.Push(i);
 #endif
 	
@@ -44,7 +56,7 @@ bool CNetServer::Start(const wchar_t* _ip, unsigned short _port, int _num_create
 		return false;
 	}
 
-	hcp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, max_worker);
+	hcp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, iocp_active);
 	if (hcp == NULL)
 	{
 		OnError(2, L"Create IOCP()\n");
@@ -57,8 +69,8 @@ bool CNetServer::Start(const wchar_t* _ip, unsigned short _port, int _num_create
 		OnError(3, L"Create Thread Failed\n");
 		return false;
 	}
-	hWorkerThread = new HANDLE[num_of_worker];
-	for (int i = 0; i < num_of_worker; i++)
+	hWorkerThread = new HANDLE[iocp_worker];
+	for (int i = 0; i < iocp_worker; i++)
 	{
 		hWorkerThread[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)IoThread, this, 0, NULL);
 		if (hWorkerThread[i] == NULL)
@@ -110,7 +122,7 @@ void CNetServer::Stop()
 
 	closesocket(sock);
 
-	for (int i = 0; i < max_client; i++)
+	for (int i = 0; i < max_session; i++)
 	{
 		if (!session_arr[i].release_flag)
 		{
@@ -120,19 +132,19 @@ void CNetServer::Stop()
 
 	wprintf(L"Disconnected all session\n");
 
-	HANDLE* hExit = new HANDLE[num_of_worker + 1];
+	HANDLE* hExit = new HANDLE[iocp_worker + 1];
 
-	for (int i = 0; i < num_of_worker; i++)
+	for (int i = 0; i < iocp_worker; i++)
 	{
 		hExit[i] = hWorkerThread[i];
 	}
 	delete[] hWorkerThread;
-	hExit[num_of_worker] = hAcceptThread;
+	hExit[iocp_worker] = hAcceptThread;
 
-	for (int i = 0; i < num_of_worker; i++)
+	for (int i = 0; i < iocp_worker; i++)
 		PostQueuedCompletionStatus(hcp, 0, 0, 0);
 
-	WaitForMultipleObjects(num_of_worker + 1, hExit, TRUE, INFINITE);
+	WaitForMultipleObjects(iocp_worker + 1, hExit, TRUE, INFINITE);
 	
 	delete[] hExit;
 	delete[] session_arr;
@@ -196,6 +208,13 @@ inline void CNetServer::RunAcceptThread()
 	if (nagle)
 		setsockopt(listen_sock, IPPROTO_TCP, TCP_NODELAY, (char*)&nagle, sizeof(nagle));
 	
+	LINGER linger;
+	linger.l_linger = 0;
+	linger.l_onoff = true;
+	setsockopt(listen_sock, SOL_SOCKET, SO_LINGER, (char*)&linger, sizeof(linger));
+
+
+
 
 	retval = listen(listen_sock, SOMAXCONN);
 	if (retval == SOCKET_ERROR) return;
@@ -448,7 +467,7 @@ bool CNetServer::SendPacket(unsigned long long session_id, PacketPtr packet)
 
 #ifndef STACK_INDEX
 
-	for (idx = 0; idx < _max_client; idx++)
+	for (idx = 0; idx < max_session; idx++)
 	{
 		if (session_arr[idx].session_id == id)
 			break;
@@ -499,7 +518,7 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 
 #ifndef STACK_INDEX
 
-	for (idx = 0; idx < _max_client; idx++)
+	for (idx = 0; idx < max_session; idx++)
 	{
 		if (session_arr[idx].session_id == id)
 			break;
@@ -549,7 +568,7 @@ inline void CNetServer::DisconnectSession(unsigned long long session_id)
 
 #ifndef STACK_INDEX
 
-	for (idx = 0; idx < _max_client; idx++)
+	for (idx = 0; idx < max_session; idx++)
 	{
 		if (session_arr[idx].session_id == id)
 			break;
@@ -791,6 +810,6 @@ inline void CNetServer::ReleaseSession(Session* session)
 
 void CNetServer::Show()
 {
-	monitor.Show(session_cnt);
+	monitor.Show(session_cnt, CPacket::GetUsePool());
 	return;
 }

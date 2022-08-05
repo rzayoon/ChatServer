@@ -30,7 +30,10 @@ public:
 			Stop();
 	}
 
-	bool Start(const wchar_t* ip, unsigned short port, int num_create_worker, int num_run_worker, bool nagle, int max_client);
+	bool Start(
+		const wchar_t* ip, unsigned short port, 
+		int iocp_worker, int iocp_active, int max_session, int max_user, 
+		unsigned char packet_key, unsigned char packet_code);
 	void Stop();
 
 	void DisconnectSession(unsigned long long session_id);
@@ -66,10 +69,16 @@ private:
 
 	HANDLE hAcceptThread;
 	HANDLE* hWorkerThread;
-	int num_of_worker;
-	int max_worker;
-	int max_client;
-	bool nagle;
+	int iocp_worker;
+	int iocp_active;
+	int max_session;
+	int max_user;
+	
+	bool nagle; 
+
+	// packet
+	unsigned char packet_key;
+	unsigned char packet_code;
 	// IP Port
 	unsigned short port;
 	wchar_t ip[16];
@@ -100,6 +109,5 @@ private:
 	Tracer tracer;
 
 	alignas(64) int session_cnt = 0;
-	alignas(64) char b;
 };
 

@@ -1,4 +1,6 @@
 #include <utility>
+#include <unordered_map>
+using std::unordered_map;
 
 #include "MemoryPoolTls.h"
 #include "ChatLogic.h"

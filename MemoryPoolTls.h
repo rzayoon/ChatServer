@@ -33,7 +33,7 @@ class MemoryPoolTls
 			default_size = _default_size;
 			placement_new = _placement_new;
 
-
+			use_size = 0;
 
 			if (placement_new)
 			{
@@ -85,10 +85,11 @@ class MemoryPoolTls
 		BLOCK_NODE* Alloc()
 		{
 	
-			size--;
 			BLOCK_NODE* data = top;
 			top = top->next;
+			size--;
 		
+
 			return data;
 		}
 
@@ -143,7 +144,7 @@ class MemoryPoolTls
 		BLOCK_NODE* top;
 
 		int size;
-		int default_size;
+		alignas(64) int default_size;
 		bool placement_new;
 	};
 
@@ -229,7 +230,7 @@ public:
 		}
 		ret = (DATA*)td_pool->Alloc();
 		
-		
+		InterlockedIncrement(&use_size);
 		
 
 		return ret;
@@ -266,14 +267,22 @@ public:
 			td_pool->Free((BLOCK_NODE*)data);
 		}
 
+		InterlockedDecrement(&use_size);
+
 		return true;
+	}
+
+	int GetUseSize()
+	{
+		return use_size;
 	}
 
 private:
 
 	LockFreeStack<BLOCK_NODE*> chunk_pool = LockFreeStack<BLOCK_NODE*>(0);
 
-	int tls_index;
+	alignas(64) int use_size;
+	alignas(64) int tls_index;
 	bool placement_new;
 	int default_size;
 };

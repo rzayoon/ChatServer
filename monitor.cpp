@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include <stdio.h>
 
-#include "CLanServer.h"
+#include "CNetServer.h"
 #include "monitor.h"
 #include "session.h"
 
@@ -126,7 +126,7 @@ void Monitor::AddOnRecvTime(LARGE_INTEGER* start, LARGE_INTEGER* end)
 }
 
 
-void Monitor::Show(int session_cnt)
+void Monitor::Show(int session_cnt, int packet_pool)
 {
 
 	int now_accept = InterlockedExchange(&accept, 0);
@@ -184,16 +184,15 @@ void Monitor::Show(int session_cnt)
 		"----------------------------------\n"
 		"Total WSASend Time : %.2lf us\n"
 		" > Avg : %.2lf us\n"
-		"Max Running Thread of Session : %d\n"
+		"PacketPool Use : %d\n"
 		"Max IO Count : %d\n"
-		"Fault Session : %d\n"
 		"Not Found Session : %d\n"
 		,
 		total_accept, now_accept, accept_err, session_cnt, now_send, now_send_packet
 		, send_comp_time_avg
 		, max_packet, min_packet, _min_cnt, avg_packet
 		, now_recv, recv_comp_time_avg, on_recv_time_avg
-		, total_wsa, send_time_avg, max_thread_one_session, max_io_cnt, fault_session, no_session);
+		, total_wsa, send_time_avg, packet_pool, max_io_cnt, no_session);
 
 
 	return;

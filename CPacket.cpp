@@ -1,6 +1,6 @@
 #include <string.h>
 #include "CPacket.h"
-#include "Protocol.h"
+#include "NetProtocol.h"
 
 
 CPacket::CPacket(int size)

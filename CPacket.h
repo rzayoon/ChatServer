@@ -125,6 +125,8 @@ public:
 	int GetData(char* dest, int size);
 	int PutData(char* src, int size);
 
+
+
 	inline static CPacket* Alloc()
 	{
 		CPacket* packet = packet_pool.Alloc();
@@ -166,6 +168,21 @@ private:
 	void Encode();
 	bool Decode();
 
+	inline static int GetUsePool()
+	{
+		return packet_pool.GetUseSize();
+	}
+
+	inline static void SetPacketCode(unsigned char code)
+	{
+		packet_code = code;
+	}
+
+	inline static void SetPacketKey(unsigned char key)
+	{
+		packet_key = key;
+	}
+
 protected:
 
 	
@@ -176,6 +193,9 @@ protected:
 	char* buffer;
 	char* hidden_buf;
 	int buffer_size;
+	static unsigned char packet_code;
+	static unsigned char packet_key;
+
 	// 변경 데이터 .. 다른 스레드에서 변하나..? 그렇지 않다.
 	int data_size;
 	int write_pos;
