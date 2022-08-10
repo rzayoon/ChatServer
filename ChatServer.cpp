@@ -6,6 +6,8 @@
 #include "ChatLogic.h"
 
 
+ChatServer g_server;
+
 ChatServer::ChatServer()
 {
 	m_hSingleThread = (HANDLE)_beginthreadex(nullptr, 0, SingleUpdate, nullptr, 0, nullptr);
@@ -21,31 +23,43 @@ ChatServer::~ChatServer()
 
 bool ChatServer::OnConnectionRequest(wchar_t* ip, unsigned short port)
 {
+	if (g_user_cnt > max_user) // 느슨하게
+	{
+		return false;
+	}
+
 	return true;
 }
 
 void ChatServer::OnClientJoin(unsigned long long session_id)
 {
-	// session id 알린다?
-
-}
-
-#ifdef AUTO_PACKET
-void ChatServer::OnRecv(unsigned long long session_id, PacketPtr packet)
-{
 	JOB* job = g_JobPool.Alloc();
-	
-	job->packet = packet;
+	job->id = session_id;
+	job->type = JOB::ON_CLI_JOIN;
 
 	g_JobQueue.Enqueue(job);
 
 	return;
 }
-#else
+
+void ChatServer::OnClientLeave(unsigned long long session_id)
+{
+	JOB* job = g_JobPool.Alloc();
+	job->id = session_id;
+	job->type = JOB::ON_CLI_LEAVE;
+	
+	g_JobQueue.Enqueue(job);
+
+	return;
+}
+
 void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 {
 	JOB* job = g_JobPool.Alloc();
 	
+	job->type = JOB::ON_RECV;
+	job->id = session_id;
+
 	packet->AddRef();
 	job->packet = packet;
 	
@@ -53,7 +67,8 @@ void ChatServer::OnRecv(unsigned long long session_id, CPacket* packet)
 
 	return;
 }
-#endif
+
+
 
 void ChatServer::OnSend(unsigned long long session_id, int send_size)
 {

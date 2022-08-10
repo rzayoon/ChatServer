@@ -33,7 +33,6 @@ class MemoryPoolTls
 			default_size = _default_size;
 			placement_new = _placement_new;
 
-			use_size = 0;
 
 			if (placement_new)
 			{
@@ -88,7 +87,6 @@ class MemoryPoolTls
 			BLOCK_NODE* data = top;
 			top = top->next;
 			size--;
-		
 
 			return data;
 		}
@@ -165,6 +163,7 @@ public:
 			wprintf(L"%d tls error\n", GetLastError());
 		placement_new = _placement_new;
 
+		use_size = 0;
 		default_size = _default_size;
 	}
 
@@ -230,7 +229,7 @@ public:
 		}
 		ret = (DATA*)td_pool->Alloc();
 		
-		InterlockedIncrement(&use_size);
+		InterlockedIncrement((LONG*)&use_size);
 		
 
 		return ret;
@@ -267,7 +266,7 @@ public:
 			td_pool->Free((BLOCK_NODE*)data);
 		}
 
-		InterlockedDecrement(&use_size);
+		InterlockedDecrement((LONG*)&use_size);
 
 		return true;
 	}

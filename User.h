@@ -1,17 +1,42 @@
 #pragma once
 
+typedef unsigned long long SS_ID;
+
+#define MAX_ID_SIZE 20
+#define MAX_NICK_SIZE 20
+#define MAX_SESSION_KEY_SIZE 64
+
 
 class User
 {
 public:
-	User();
+	User()
+	{
+		is_login = false;
+		is_in_sector = false;
+
+	}
 	virtual ~User();
 
+	unsigned int GetLastRecvTime()
+	{
+		return last_recv_time;
+	}
 
+	bool is_login;
+	bool is_in_sector;
 
-private:
+	SS_ID session_id;
+	__int64 account_no;
+	wchar_t id[MAX_ID_SIZE];
+	wchar_t nickname[MAX_NICK_SIZE];
+	char session_key[MAX_SESSION_KEY_SIZE];
 
-	SID
+	unsigned short sector_x;
+	unsigned short sector_y;
+
+	unsigned int last_recv_time;
+
 
 };
 

@@ -5,18 +5,17 @@
 
 class ChatServer : public CNetServer
 {
+public:
 	ChatServer();
 	virtual ~ChatServer();
 
+
+private:
 	bool OnConnectionRequest(wchar_t* ip, unsigned short port);
 	void OnClientJoin(unsigned long long session_id);
 	void OnClientLeave(unsigned long long session_id);
 
-#ifdef AUTO_PACKET
-	void OnRecv(unsigned long long session_id, PacketPtr packet);
-#else
 	void OnRecv(unsigned long long session_id, CPacket* packet);
-#endif
 
 	void OnSend(unsigned long long session_id, int send_size);
 
@@ -26,10 +25,9 @@ class ChatServer : public CNetServer
 	void OnError(int errorcode, const wchar_t* msg);
 
 
-private:
-
 	HANDLE m_hSingleThread;
 
 
 };
 
+extern ChatServer g_server;

@@ -13,45 +13,42 @@
 #include "TextParser.h"
 
 
-
 #define SERVERPORT 6000
 
-ChatServer server;
 
 int main()
 {
-	
-	timeBeginPeriod(1);
 
+	timeBeginPeriod(1);
+	
 	char ip[16];
-	short port;
+	int port;
 	int worker;
 	int max_worker;
 	int max_user;
 	int max_session;
-	unsigned char packet_code;
-	unsigned char packet_key;
+	int packet_code;
+	int packet_key;
 
 	TextParser parser;
 	if (!parser.LoadFile("Config.ini")) return 1;
 
 	parser.GetStringValue("ServerBindIP", ip, 16);
-	parser.GetValue("ServerBindPort", (int*)&port);
+	parser.GetValue("ServerBindPort", &port);
 	parser.GetValue("IOCPWorkerThread", &worker);
 	parser.GetValue("IOCPActiveThread", &max_worker);
 	parser.GetValue("MaxUser", &max_user);
 	parser.GetValue("MaxSession", &max_session);
-	parser.GetValue("PacketCode", (int*)&packet_code);
-	parser.GetValue("PacketKey", (int*)&packet_key);
-	// packet code, fix_key
+	parser.GetValue("PacketCode", &packet_code);
+	parser.GetValue("PacketKey", &packet_key);
 
-
+	
 
 	wchar_t wip[16];
 
 	MultiByteToWideChar(CP_ACP, 0, ip, 16, wip, 16);
 
-	server.Start(wip, port, worker, max_worker, max_session, max_user, packet_key, packet_code);
+	g_server.Start(wip, port, worker, max_worker, max_session, max_user, packet_key, packet_code);
 
 	DWORD oldTick = timeGetTime();
 	while (1)
@@ -64,7 +61,7 @@ int main()
 			if (input == L'q' || input == L'Q')
 			{
 
-				server.Stop();
+				g_server.Stop();
 
 				break;
 			}
@@ -74,7 +71,7 @@ int main()
 		Sleep(1000 - term);
 		oldTick = timeGetTime();
 
-		server.Show();
+		g_server.Show();
 
 	}
 

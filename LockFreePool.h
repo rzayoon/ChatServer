@@ -44,8 +44,8 @@ public:
 	/// 생성자 
 	/// </summary>
 	/// <param name="block_num"> 초기 블럭 수 </param>
-	/// <param name="placement_new"> Alloc 또는 Free 시 생성자 호출 여부(미구현) </param>
-	LockFreePool(int _block_num, bool _free_list == true);
+	/// <param name="free_list"> capacity 추가 여부 </param>
+	LockFreePool(int _block_num, bool _free_list = true);
 
 	virtual ~LockFreePool();
 

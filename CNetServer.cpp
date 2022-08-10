@@ -9,7 +9,7 @@
 #include "LockFreeQueue.h"
 #include "CNetServer.h"
 #include "NetProtocol.h"
-
+#include "CrashDump.h"
 
 long long packet_counter[101];
 int log_arr[100];
@@ -199,15 +199,19 @@ inline void CNetServer::RunAcceptThread()
 	serveraddr.sin_family = AF_INET;
 	InetPtonW(AF_INET, ip, &serveraddr.sin_addr.s_addr);
 	serveraddr.sin_port = htons(port);
+
 	retval = bind(listen_sock, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
 	if (retval == SOCKET_ERROR) return;
 
+	// 家南 价脚 滚欺
 	int size = 0;
 	setsockopt(listen_sock, SOL_SOCKET, SO_SNDBUF, (char*)&size, sizeof(size));
 
+	// nagle
 	if (nagle)
 		setsockopt(listen_sock, IPPROTO_TCP, TCP_NODELAY, (char*)&nagle, sizeof(nagle));
 	
+	// rst
 	LINGER linger;
 	linger.l_linger = 0;
 	linger.l_onoff = true;
@@ -240,6 +244,7 @@ inline void CNetServer::RunAcceptThread()
 		temp_port = ntohs(clientaddr.sin_port);
 
 		tracer.trace(70, 0, client_sock);
+		monitor.IncAccept();
 
 		if (OnConnectionRequest(temp_ip, temp_port))
 		{
@@ -286,7 +291,6 @@ inline void CNetServer::RunAcceptThread()
 			tracer.trace(10, session, session->session_id); // accept
 
 			//立加
-			monitor.IncAccept();
 
 			InterlockedIncrement((LONG*)&session_cnt);
 
@@ -359,7 +363,7 @@ inline void CNetServer::RunIoThread()
 
 				while (true)
 				{
-					LanPacketHeader header;
+					NetPacketHeader header;
 
 					if (session->recv_q.Peek((char*)&header, sizeof(header)) != sizeof(header))
 						break;
@@ -367,7 +371,6 @@ inline void CNetServer::RunIoThread()
 					int q_size = session->recv_q.GetFillSize();
 					if (header.len + sizeof(header) > q_size)
 						break;
-					session->recv_q.MoveFront(sizeof(header));
 
 #ifdef AUTO_PACKET
 					PacketPtr packet = CPacket::Alloc();
@@ -381,9 +384,12 @@ inline void CNetServer::RunIoThread()
 					monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
 #else
 					CPacket* packet = CPacket::Alloc();
-					int ret_deq = session->recv_q.Dequeue(packet->GetBufferPtr(), header.len);
-					packet->MoveWritePos(ret_deq);
-					packet->Decode();
+					int ret_deq = session->recv_q.Dequeue(packet->GetBufferPtrNet(), header.len + sizeof(header));
+					packet->MoveWritePos(header.len);
+					if (!packet->Decode())
+					{
+						CrashDump::Crash();
+					}
 
 					QueryPerformanceCounter(&on_recv_st);
 					OnRecv(*(unsigned long long*) &session->session_id, packet);
@@ -761,6 +767,9 @@ inline void CNetServer::ReleaseSession(Session* session)
 		{
 
 			tracer.trace(75, session, session->session_id, session->sock);
+			
+			OnClientLeave(*(unsigned long long*)&session->session_id);
+			
 			session->session_id = 0;
 
 
@@ -793,14 +802,12 @@ inline void CNetServer::ReleaseSession(Session* session)
 			session->sock = INVALID_SOCKET;
 			
 
-			OnClientLeave(*(unsigned long long*)&session->session_id);
 
 #ifdef STACK_INDEX
 			empty_session_stack.Push(session->session_index);
 #else
 			session->used = false;
 #endif
-
 			InterlockedDecrement((LONG*)&session_cnt);
 		}
 	}

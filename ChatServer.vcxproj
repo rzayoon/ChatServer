@@ -139,6 +139,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -152,9 +153,14 @@
     <ClCompile Include="ChatServer.cpp" />
     <ClCompile Include="CNetServer.cpp" />
     <ClCompile Include="CPacket.cpp" />
+    <ClCompile Include="CrashDump.cpp" />
+    <ClCompile Include="JOB.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MakePacket.cpp" />
     <ClCompile Include="monitor.cpp" />
+    <ClCompile Include="ProcPacket.cpp" />
     <ClCompile Include="RingBuffer.cpp" />
+    <ClCompile Include="Sector.cpp" />
     <ClCompile Include="session.cpp" />
     <ClCompile Include="TextParser.cpp" />
     <ClCompile Include="Tracer.cpp" />
@@ -165,18 +171,25 @@
     <ClInclude Include="ChatProtocol.h" />
     <ClInclude Include="ChatServer.h" />
     <ClInclude Include="CNetServer.h" />
+    <ClInclude Include="CommonProtocol.h" />
     <ClInclude Include="CPacket.h" />
+    <ClInclude Include="JOB.h" />
     <ClInclude Include="LockFreePool.h" />
     <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="LockFreeStack.h" />
+    <ClInclude Include="MakePacket.h" />
     <ClInclude Include="MemoryPoolTls.h" />
     <ClInclude Include="monitor.h" />
     <ClInclude Include="NetProtocol.h" />
+    <ClInclude Include="ObjectPool.h" />
+    <ClInclude Include="ProcPacket.h" />
     <ClInclude Include="RingBuffer.h" />
+    <ClInclude Include="Sector.h" />
     <ClInclude Include="session.h" />
     <ClInclude Include="TextParser.h" />
     <ClInclude Include="Tracer.h" />
     <ClInclude Include="User.h" />
+    <ClInclude Include="CrashDump.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

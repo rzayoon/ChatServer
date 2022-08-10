@@ -50,8 +50,8 @@ template<class T>
 inline LockFreeQueue<T>::LockFreeQueue(unsigned int size, bool free_list)
 {
 	_size = 0;
-	_free_list = free_list 
-	_pool = new LockFreePool<Node>(size + 1, free_list);
+	_free_list = free_list;
+	_pool = new LockFreePool<Node>(size + 1, _free_list);
 	_head = _pool->Alloc();
 
 	_tail = _head;

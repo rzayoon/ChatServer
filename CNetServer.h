@@ -72,14 +72,17 @@ private:
 	int iocp_worker;
 	int iocp_active;
 	int max_session;
-	int max_user;
+
+protected:
+	unsigned int max_user;
 	
+private:
 	bool nagle; 
 
 	// packet
 	unsigned char packet_key;
 	unsigned char packet_code;
-	// IP Port
+	// Server IP Port
 	unsigned short port;
 	wchar_t ip[16];
 

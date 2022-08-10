@@ -185,17 +185,15 @@ private:
 
 protected:
 
-	
-
-
+	// 정적 멤버
 	inline static MemoryPoolTls<CPacket> packet_pool = MemoryPoolTls<CPacket>(1000);
+	inline static unsigned char packet_code = 0;
+	inline static unsigned char packet_key = 0;
 	// 고정 
 	char* buffer;
 	char* hidden_buf;
 	int buffer_size;
-	static unsigned char packet_code;
-	static unsigned char packet_key;
-
+	
 	// 변경 데이터 .. 다른 스레드에서 변하나..? 그렇지 않다.
 	int data_size;
 	int write_pos;
