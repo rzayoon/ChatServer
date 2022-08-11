@@ -10,6 +10,7 @@
 #include "CNetServer.h"
 #include "NetProtocol.h"
 #include "CrashDump.h"
+#include "ChatLogic.h"
 
 long long packet_counter[101];
 int log_arr[100];
@@ -620,7 +621,6 @@ inline bool CNetServer::RecvPost(Session* session)
 		wsabuf[1].len = emptySize - size1;
 	}
 
-	monitor.UpdateMaxIOCount(temp);
 
 	SOCKET socket = session->sock;
 	session->recv_sock = socket;
@@ -705,7 +705,6 @@ inline bool CNetServer::SendPost(Session* session)
 
 		session->send_packet_cnt = buf_cnt;
 		DWORD sendbytes;
-		monitor.UpdateMaxIOCount(temp);
 		monitor.IncSend();
 ;
 		SOCKET socket = session->sock;
@@ -817,6 +816,6 @@ inline void CNetServer::ReleaseSession(Session* session)
 
 void CNetServer::Show()
 {
-	monitor.Show(session_cnt, CPacket::GetUsePool());
+	monitor.Show(session_cnt, CPacket::GetUsePool(), g_JobQueue.GetSize());
 	return;
 }

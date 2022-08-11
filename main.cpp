@@ -10,6 +10,7 @@
 #include <conio.h>
 
 #include "ChatServer.h"
+#include "ChatLogic.h"
 #include "TextParser.h"
 
 

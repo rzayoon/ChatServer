@@ -18,7 +18,6 @@ public:
 		sendpost_in_recv_cnt = 0;
 		sendpacket_cnt = 0;
 		MaxThreadOneSession = 0;
-		MaxIOCount = 0;
 		recv_completion_time = 0;
 		recv_comp_cnt = 0;
 		send_completion_time = 0;
@@ -57,10 +56,9 @@ public:
 	void AddOnRecvTime(LARGE_INTEGER* st, LARGE_INTEGER* end);
 
 	void UpdateMaxThread(int max);
-	void UpdateMaxIOCount(int temp);
 	void UpdateSendPacket(LONG size);
 
-	void Show(int session_cnt, int packet_pool);
+	void Show(int session_cnt, int packet_pool, int job_queue);
 
 private:
 
@@ -74,7 +72,6 @@ private:
 	alignas(64) LONG sendpost_in_recv_cnt;
 	alignas(64) LONG sendpacket_cnt;
 	alignas(64) LONG MaxThreadOneSession;
-	alignas(64) LONG MaxIOCount;
 	alignas(64) double recv_completion_time;
 	alignas(64) LONG recv_comp_cnt;
 	alignas(64) double send_completion_time;
