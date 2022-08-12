@@ -19,6 +19,9 @@
 
 ----------------------------------------------------------------*/
 
+
+
+
 template <class DATA>
 class ObjectPool
 {
@@ -91,13 +94,13 @@ public:
 protected:
 	BLOCK_NODE* top;
 	
-	BLOCK_NODE** pool;
-
 	int capacity;
 	int use_count;
-	bool placement_new;
-
 	SRWLOCK pool_srw;
+	
+	alignas(64) BLOCK_NODE** pool;
+	bool placement_new;
+	int padding_size;
 
 };
 
@@ -108,6 +111,8 @@ ObjectPool<DATA>::ObjectPool(int _capacity, bool _placement_new)
 	use_count = 0;
 	placement_new = _placement_new;
 	InitializeSRWLock(&pool_srw);
+
+	padding_size = max(sizeof(BLOCK_NODE::front_pad), alignof(DATA));
 
 	pool = new BLOCK_NODE*[capacity];
 
@@ -221,11 +226,11 @@ bool ObjectPool<DATA>::Free(DATA* data)
 	if (placement_new)
 		data->~DATA();
 
-	BLOCK_NODE* node = (BLOCK_NODE*)((char*)data - sizeof(BLOCK_NODE::front_pad));
+	BLOCK_NODE* node = (BLOCK_NODE*)((char*)data - padding_size);
 	if (node->front_pad != PAD || node->back_pad != PAD)
 	{
-		// crash
-		return false;
+		int* a = 0;
+		*a = 0;
 	}
 
 

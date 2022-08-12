@@ -3,6 +3,8 @@
 #include "User.h"
 
 
+#define MAX_JOB_QUEUE 20000
+
 struct JOB
 {
 	enum

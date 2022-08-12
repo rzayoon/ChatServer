@@ -434,6 +434,7 @@ inline void CNetServer::RunIoThread()
 #else
 				while (packet_cnt > 0)
 				{
+					monitor.IncSendPacket(); // 실제로 보낸 Packet 수
 					session->temp_packet[--packet_cnt]->SubRef();
 				}
 #endif
@@ -470,8 +471,6 @@ bool CNetServer::SendPacket(unsigned long long session_id, PacketPtr packet)
 	unsigned short idx = session_id >> INDEX_BIT_SHIFT;
 	unsigned int id = session_id & ID_MASK;
 
-	(*packet)->Encode();
-
 #ifndef STACK_INDEX
 
 	for (idx = 0; idx < max_session; idx++)
@@ -505,23 +504,21 @@ bool CNetServer::SendPacket(unsigned long long session_id, PacketPtr packet)
 
 
 
-	if (!ret)
+	/*if (!ret)
 	{
 		monitor.IncNoSession();
-	}
+	}*/
 
 	return ret;
 }
 #else
 bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 {
-	monitor.IncSendPacket();
 	bool ret = false;
 
 	unsigned short idx = session_id >> INDEX_BIT_SHIFT;
 	unsigned int id = session_id & ID_MASK;
 
-	packet->Encode();
 
 #ifndef STACK_INDEX
 
@@ -558,8 +555,8 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 
 
 
-	if (!ret)
-	{
+	if (!ret)   // 필요하지 않은듯
+	{ 
 		monitor.IncNoSession();
 	}
 

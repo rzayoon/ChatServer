@@ -9,6 +9,9 @@ using std::unordered_map;
 #include "CommonProtocol.h"
 
 
+
+
+
 bool ProcChatLogin(User* user, CPacket* packet)
 {
 	__int64 account_no;
@@ -33,7 +36,8 @@ bool ProcChatLogin(User* user, CPacket* packet)
 
 		g_server.DisconnectSession(user->session_id);
 		
-
+		g_Tracer.trace(20, user);
+		
 		return false;
 	}
 
@@ -54,9 +58,13 @@ bool ProcChatLogin(User* user, CPacket* packet)
 
 			g_server.DisconnectSession(temp_user->session_id);
 
+			g_Tracer.trace(21, user);
+
 			return false;
 		}
 	}
+	g_connect_cnt--;
+	g_login_cnt++;
 
 	user->is_login = true;
 	user->account_no = account_no;

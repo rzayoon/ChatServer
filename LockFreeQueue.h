@@ -67,7 +67,7 @@ template<class T>
 inline bool LockFreeQueue<T>::Enqueue(T data)
 {
 	Node* node = _pool->Alloc();
-	if (node == nullptr && _free_list)
+	if (node == nullptr)
 		return false;
 
 	unsigned long long old_tail;

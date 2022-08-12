@@ -5,7 +5,7 @@ using std::unordered_map;
 #include "CPacket.h"
 #include "JOB.h"
 #include "User.h"
-
+#include "Tracer.h"
 
 
  
@@ -14,7 +14,11 @@ using std::unordered_map;
 extern MemoryPoolTls<JOB> g_JobPool;
 extern LockFreeQueue<JOB*> g_JobQueue;
 extern unordered_map<SS_ID, User*> g_UserMap;
-extern unsigned int g_user_cnt;
+extern unsigned int g_connect_cnt;
+extern unsigned int g_login_cnt;
+
+extern Tracer g_Tracer;
+
 
 unsigned __stdcall SingleUpdate(void* param);
 

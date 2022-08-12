@@ -159,14 +159,15 @@ public:
 		return;
 	}
 
+	void Encode();
+	bool Decode();
+
 private:
 	char* GetBufferPtrLan(void);
 	int GetDataSizeLan(void);
 	char* GetBufferPtrNet(void);
 	int GetDataSizeNet(void);
 
-	void Encode();
-	bool Decode();
 
 	inline static int GetUsePool()
 	{

@@ -68,12 +68,12 @@ int main()
 			}
 		}
 
-		DWORD term = timeGetTime() - oldTick;
-		Sleep(1000 - term);
-		oldTick = timeGetTime();
+		Sleep(1000);
 
 		g_server.Show();
-
+		wprintf(L"Connect : %d\n"
+			L"Login : %d\n", 
+			g_connect_cnt, g_login_cnt);
 	}
 
 	timeEndPeriod(1);

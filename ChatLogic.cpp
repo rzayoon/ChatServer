@@ -14,7 +14,7 @@
 
 // 모니터링 대상
 MemoryPoolTls<JOB> g_JobPool;
-LockFreeQueue<JOB*> g_JobQueue;
+LockFreeQueue<JOB*> g_JobQueue(MAX_JOB_QUEUE, false);
 
 
 ObjectPool<User> g_UserPool(20000, true);
@@ -24,7 +24,9 @@ Tracer g_Tracer;
 // session key -> account no 중복 검사 시 순회 필요 ( login )
 // account no key -> ?? session key 중복 검사?? join - leave 시 검색해서 찾아야 함.
 unordered_map<SS_ID, User*> g_UserMap;
-unsigned int g_user_cnt;
+unsigned int g_connect_cnt;
+unsigned int g_login_cnt;
+
 
 // polling 먼저 하고 차후에 event driven 구조로
 // time out 처리 프레임 필요
@@ -79,20 +81,20 @@ unsigned __stdcall SingleUpdate(void* param)
 			{
 			case en_PACKET_CS_CHAT_REQ_LOGIN:
 			{
-				ProcChatLogin(user, packet);
 				g_Tracer.trace(10, user);
+				ProcChatLogin(user, packet);
 				break;
 			}
 			case en_PACKET_CS_CHAT_REQ_SECTOR_MOVE:
 			{
-				ProcChatSectorMove(user, packet);
 				g_Tracer.trace(11, user);
+				ProcChatSectorMove(user, packet);
 				break;
 			}
 			case en_PACKET_CS_CHAT_REQ_MESSAGE:
 			{
-				ProcChatMessage(user, packet);
 				g_Tracer.trace(12, user);
+				ProcChatMessage(user, packet);
 				break;
 			}
 			case en_PACKET_CS_CHAT_REQ_HEARTBEAT:
@@ -161,11 +163,13 @@ void CreateUser(SS_ID s_id)
 
 	user->last_recv_time = timeGetTime();
 
+	
+
 	g_Tracer.trace(1, user);
 
 	// 추가
 	g_UserMap[s_id] = user;
-	g_user_cnt++;
+	g_connect_cnt++;
 
 }
 
@@ -179,12 +183,19 @@ void DeleteUser(SS_ID s_id)
 		return;
 	}
 
-
+	if (user->is_in_sector)
+	{
+		Sector_RemoveUser(user);
+	}
 
 	g_Tracer.trace(2, user);
 
+	if (user->is_login)
+		g_login_cnt--;
+	else
+		g_connect_cnt--;
+
 	g_UserMap.erase(s_id);
-	g_user_cnt--;
 
 	g_UserPool.Free(user);
 

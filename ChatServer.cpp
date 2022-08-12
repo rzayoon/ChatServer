@@ -23,7 +23,7 @@ ChatServer::~ChatServer()
 
 bool ChatServer::OnConnectionRequest(wchar_t* ip, unsigned short port)
 {
-	if (g_user_cnt > max_user) // ´À½¼ÇÏ°Ô
+	if (g_login_cnt > max_user) // ´À½¼ÇÏ°Ô
 	{
 		return false;
 	}
