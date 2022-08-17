@@ -272,18 +272,19 @@ inline void CNetServer::RunAcceptThread()
 
 			Session* session = &session_arr[index];
 
+			InterlockedIncrement((LONG*)&session->io_count);
+
 			session->session_id = m_sess_id++;
 			if (m_sess_id == 0) m_sess_id++;
 			*(unsigned*)&session->session_index = index;
 			session->sock = client_sock;
 			wcscpy_s(session->ip, _countof(session->ip), temp_ip);
 			session->port = ntohs(clientaddr.sin_port);
-			session->io_count = 0;
 			session->send_flag = false;
 			session->send_packet_cnt = 0;
 			session->disconnect = false;
 			//session->send_q.ClearBuffer(); 비어있어야 정상
-			session->recv_q.ClearBuffer();
+			session->recv_q.ClearBuffer(); // 얘는??
 
 			CreateIoCompletionPort((HANDLE)client_sock, hcp, (ULONG_PTR)session, 0);
 
@@ -292,15 +293,16 @@ inline void CNetServer::RunAcceptThread()
 			tracer.trace(10, session, session->session_id); // accept
 
 			//접속
-
 			InterlockedIncrement((LONG*)&session_cnt);
-
 
 			// RecvPost()
 			if (RecvPost(session))
 			{
 				OnClientJoin(*((unsigned long long*)&session->session_id));
 			}
+
+			UpdateIOCount(session);
+
 		}
 		else // Connection Requeset 거부
 		{
@@ -411,12 +413,14 @@ inline void CNetServer::RunIoThread()
 			}
 			else if (&session->send_overlapped == overlapped) // send 결과 처리
 			{
+				QueryPerformanceCounter(&send_start);
+				monitor.AddSendToComp(&session->send_time, &send_start);
+
 				OnSend(*(unsigned long long*)&session->session_id, cbTransferred);
 				if (session->send_sock != session->sock)
 					log_arr[3]++;
 				tracer.trace(31, session, session->session_id);
 				
-				QueryPerformanceCounter(&send_start);
 				monitor.UpdateSendPacket(cbTransferred);
 
 				int packet_cnt = session->send_packet_cnt;
@@ -706,10 +710,10 @@ inline bool CNetServer::SendPost(Session* session)
 ;
 		SOCKET socket = session->sock;
 		session->send_sock = socket;
-		QueryPerformanceCounter(&start);
+		QueryPerformanceCounter(&session->send_time);
 		retval = WSASend(socket, wsabuf, buf_cnt, &sendbytes, 0, &session->send_overlapped, NULL);
 		QueryPerformanceCounter(&end);
-		monitor.AddSendTime(&start, &end);
+		monitor.AddSendTime(&session->send_time, &end);
 
 
 		DWORD error_code;

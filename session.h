@@ -23,6 +23,8 @@ public:
 	alignas(8) unsigned int session_id;
 	unsigned short session_index;
 
+	LARGE_INTEGER send_time;
+
 	OVERLAPPED recv_overlapped;
 	SOCKET recv_sock;
 	OVERLAPPED send_overlapped;

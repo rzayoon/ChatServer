@@ -109,6 +109,18 @@ void Monitor::AddSendCompTime(LARGE_INTEGER* start, LARGE_INTEGER* end)
 	InterlockedIncrement(&send_comp_cnt);
 }
 
+void Monitor::AddSendToComp(LARGE_INTEGER* start, LARGE_INTEGER* end)
+{
+
+	unsigned long long deltaTime = end->QuadPart - start->QuadPart;
+
+
+	InterlockedAdd64((LONG64*)&send_to_comp_time, deltaTime);
+	InterlockedIncrement(&send_to_comp_cnt);
+
+	return;
+}
+
 void Monitor::AddOnRecvTime(LARGE_INTEGER* start, LARGE_INTEGER* end)
 {
 	unsigned long long deltaTime = end->QuadPart - start->QuadPart;
@@ -135,6 +147,9 @@ void Monitor::Show(int session_cnt, int packet_pool, int job_queue)
 	int snd_cnt = InterlockedExchange(&send_comp_cnt, 0);
 	unsigned long long now_on_recv_time = InterlockedExchange64((LONG64*)&on_recv_time, 0);
 	int on_rcv_cnt = InterlockedExchange(&on_recv_cnt, 0);
+	unsigned long long now_stc_time = InterlockedExchange64((LONG64*)&send_to_comp_time, 0);
+	int stc_cnt = InterlockedExchange(&send_to_comp_cnt, 0);
+
 
 	double total_wsa = (double)now_send_time / frq.QuadPart * MEGA_ARG;
 
@@ -146,6 +161,9 @@ void Monitor::Show(int session_cnt, int packet_pool, int job_queue)
 	if (snd_cnt != 0) send_comp_time_avg = (double)now_send_comp_time / snd_cnt / frq.QuadPart * MEGA_ARG;
 	double on_recv_time_avg = 0;
 	if (on_rcv_cnt != 0) on_recv_time_avg = (double)now_on_recv_time / on_rcv_cnt / frq.QuadPart * MEGA_ARG;
+
+	double stc_avg = 0;
+	if (stc_cnt != 0) stc_avg = (double)now_stc_time / stc_cnt / frq.QuadPart * MEGA_ARG;
 
 	int max_thread_one_session = InterlockedExchange(&MaxThreadOneSession, 0);
 
@@ -159,31 +177,32 @@ void Monitor::Show(int session_cnt, int packet_pool, int job_queue)
 	LONG _min_cnt = InterlockedExchange(&min_cnt, 0);
 
 
-	printf("----------------------------------------------------\n"
-		"total accpet : %d\n"
-		"accept tps : %d\n"
-		"accept error : %d\n"
-		"Session Count : %d\n"
-		"SEND/sec : %d\n"
-		"SendPacket/sec : %d\n"
-		"Send Completion : %.2lf us\n"
-		" > Packet max : %d\n"
-		" > Packet min : %d | count : %d\n"
-		" > Packet avg : %.1lf\n"
-		"RECV/sec : %d\n"
-		"Recv Completion : %.2lf us\n"
-		" > OnRecv : %.2lf us\n"
-		"----------------------------------\n"
-		"Total WSASend Time : %.2lf us\n"
-		" > Avg : %.2lf us\n"
-		"PacketPool Use : %d\n"
-		"Job Queue : %d / %d\n"
-		"Not Found Session : %d\n"
-		,
-		total_accept, now_accept, accept_err, session_cnt, now_send, now_send_packet
+	wprintf(L"----------------------------------------------------\n"
+		L"total accpet : %d\n"
+		L"accept tps : %d\n"
+		L"accept error : %d\n"
+		L"Session Count : %d\n"
+		L"SEND/sec : %d\n"
+		L"SendPacket/sec : %d\n"
+		L"Send Completion : %.2lf us\n"
+		L" > Packet max : %d\n"
+		L" > Packet min : %d | count : %d\n"
+		L" > Packet avg : %.1lf\n"
+		L"SendToComp avg : %.2lf us\n"
+		L"RECV/sec : %d\n"
+		L"OnRecv/sec : %d\n"
+		L"Recv Completion : %.2lf us\n"
+		L" > OnRecv : %.2lf us\n"
+		L"Total WSASend Time : %.2lf us\n"
+		L" > Avg : %.2lf us\n"
+		L"----------------------------------\n"
+		L"PacketPool Use : %d\n"
+		L"Job Queue : %d / %d\n"
+		L"Not Found Session : %d\n"
+		, total_accept, now_accept, accept_err, session_cnt, now_send, now_send_packet
 		, send_comp_time_avg
-		, max_packet, min_packet, _min_cnt, avg_packet
-		, now_recv, recv_comp_time_avg, on_recv_time_avg
+		, max_packet, min_packet, _min_cnt, avg_packet, stc_avg
+		, now_recv, on_rcv_cnt, recv_comp_time_avg, on_recv_time_avg
 		, total_wsa, send_time_avg, packet_pool, job_queue, MAX_JOB_QUEUE, no_session);
 
 

@@ -34,11 +34,11 @@ unsigned __stdcall SingleUpdate(void* param)
 {
 	JOB* job;
 	bool ret_deq;
-	DWORD oldTick = timeGetTime();;
+	DWORD oldTick = GetTickCount64();;
 	while (true)
 	{
 		// time out 
-		DWORD nowTick = timeGetTime();
+		DWORD nowTick = GetTickCount64();
 		DWORD diffTick = nowTick - oldTick;
 		if (diffTick >= 1000)
 		{
@@ -47,8 +47,8 @@ unsigned __stdcall SingleUpdate(void* param)
 			{
 				SS_ID sid = iter.first;
 				User* user = iter.second;
-				if (nowTick - user->GetLastRecvTime() >= 40000) {
-					user->last_recv_time = nowTick;
+				if (GetTickCount64() - user->GetLastRecvTime() >= 40000) {
+					user->last_recv_time = GetTickCount64();
 					g_server.DisconnectSession((unsigned long long)sid);
 					g_Tracer.trace(00, user);
 				}
@@ -74,26 +74,26 @@ unsigned __stdcall SingleUpdate(void* param)
 			
 			User* user = g_UserMap[sid];
 
-			user->last_recv_time = timeGetTime();
+			user->last_recv_time = GetTickCount64();
 
 			// Packet Proc
 			switch (packet_type)
 			{
 			case en_PACKET_CS_CHAT_REQ_LOGIN:
 			{
-				g_Tracer.trace(10, user);
+				g_Tracer.trace(10, (PVOID)user->session_id);
 				ProcChatLogin(user, packet);
 				break;
 			}
 			case en_PACKET_CS_CHAT_REQ_SECTOR_MOVE:
 			{
-				g_Tracer.trace(11, user);
+				g_Tracer.trace(11, (PVOID)user->session_id);
 				ProcChatSectorMove(user, packet);
 				break;
 			}
 			case en_PACKET_CS_CHAT_REQ_MESSAGE:
 			{
-				g_Tracer.trace(12, user);
+				g_Tracer.trace(12, (PVOID)user->session_id);
 				ProcChatMessage(user, packet);
 				break;
 			}
@@ -161,11 +161,11 @@ void CreateUser(SS_ID s_id)
 	User* user = g_UserPool.Alloc();
 	user->session_id = s_id;
 
-	user->last_recv_time = timeGetTime();
+	user->last_recv_time = GetTickCount64();
 
 	
 
-	g_Tracer.trace(1, user);
+	g_Tracer.trace(1, (PVOID)user->session_id);
 
 	// Ãß°¡
 	g_UserMap[s_id] = user;

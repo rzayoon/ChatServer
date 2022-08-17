@@ -7,7 +7,7 @@ using std::unordered_map;
 #include "MakePacket.h"
 #include "Sector.h"
 #include "CommonProtocol.h"
-
+#include "CrashDump.h"
 
 
 
@@ -25,6 +25,9 @@ bool ProcChatLogin(User* user, CPacket* packet)
 	if (user->is_login == true)
 	{
 		// 같은 세션id에서 중복 로그인 메시지
+		g_Tracer.trace(20, (PVOID)user->session_id);
+
+		CrashDump::Crash();
 
 		CPacket* send_packet = CPacket::Alloc();
 		
@@ -36,7 +39,6 @@ bool ProcChatLogin(User* user, CPacket* packet)
 
 		g_server.DisconnectSession(user->session_id);
 		
-		g_Tracer.trace(20, user);
 		
 		return false;
 	}
@@ -48,6 +50,10 @@ bool ProcChatLogin(User* user, CPacket* packet)
 		if (temp_user->account_no == account_no)
 		{
 			// 다른 세션 id에서 account no 중복 로그인
+			g_Tracer.trace(21, (PVOID)user->session_id);
+			
+			CrashDump::Crash();
+
 			CPacket* send_packet = CPacket::Alloc();
 
 			MakeChatLogin(send_packet, 0, account_no);
@@ -58,7 +64,6 @@ bool ProcChatLogin(User* user, CPacket* packet)
 
 			g_server.DisconnectSession(temp_user->session_id);
 
-			g_Tracer.trace(21, user);
 
 			return false;
 		}

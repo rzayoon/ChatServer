@@ -36,7 +36,7 @@ public:
 	unsigned short sector_x;
 	unsigned short sector_y;
 
-	unsigned int last_recv_time;
+	unsigned long long last_recv_time;
 
 
 };
