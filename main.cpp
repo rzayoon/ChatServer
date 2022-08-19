@@ -69,11 +69,13 @@ int main()
 		}
 
 		Sleep(1000);
+		int job_proc = InterlockedExchange(&g_job_proc, 0);
 
 		g_server.Show();
 		wprintf(L"Connect : %d\n"
-			L"Login : %d\n", 
-			g_connect_cnt, g_login_cnt);
+			L"Login : %d\n"
+			L"Proc Job/sec : %d\n",
+			g_connect_cnt, g_login_cnt, job_proc);
 	}
 
 	timeEndPeriod(1);

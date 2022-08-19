@@ -16,6 +16,7 @@ extern LockFreeQueue<JOB*> g_JobQueue;
 extern unordered_map<SS_ID, User*> g_UserMap;
 extern unsigned int g_connect_cnt;
 extern unsigned int g_login_cnt;
+extern ULONG g_job_proc;
 
 extern Tracer g_Tracer;
 

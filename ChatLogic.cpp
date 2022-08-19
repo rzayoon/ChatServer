@@ -26,7 +26,7 @@ Tracer g_Tracer;
 unordered_map<SS_ID, User*> g_UserMap;
 unsigned int g_connect_cnt;
 unsigned int g_login_cnt;
-
+alignas(64) ULONG g_job_proc;
 
 // polling 먼저 하고 차후에 event driven 구조로
 // time out 처리 프레임 필요
@@ -135,7 +135,7 @@ unsigned __stdcall SingleUpdate(void* param)
 		}
 
 		g_JobPool.Free(job);
-
+		InterlockedIncrement(&g_job_proc);
 	}
 
 
