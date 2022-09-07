@@ -95,6 +95,9 @@ private:
 	bool RecvPost(Session* session);
 	bool SendPost(Session* session);
 
+	// libary ³»ºÎ¿ë
+	void Disconnect(Session* session);
+
 	int UpdateIOCount(Session* session);
 	void ReleaseSession(Session* session);
 

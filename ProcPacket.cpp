@@ -86,7 +86,6 @@ bool ProcChatLogin(User* user, CPacket* packet)
 
 	return true;
 
-
 }
 
 bool ProcChatSectorMove(User* user, CPacket* packet)
@@ -104,10 +103,16 @@ bool ProcChatSectorMove(User* user, CPacket* packet)
 		return false;
 	}
 
+	if (sector_x < 0 || sector_x >= SECTOR_MAX_X || sector_y < 0 || sector_y >= SECTOR_MAX_Y)
+	{
+		return false;
+	}
+
 	if (user->is_in_sector == true)
 	{
 		Sector_RemoveUser(user);
 	}
+	
 	user->sector_x = sector_x; 
 	user->sector_y = sector_y;
 
@@ -133,6 +138,13 @@ bool ProcChatMessage(User* user, CPacket* packet)
 	wchar_t message[MAX_MESSAGE];
 
 	(*packet) >> account_no >> message_len;
+
+	if (user->account_no != account_no)
+		return false;
+
+	if ((*packet).GetDataSize() != message_len || message_len == 0)
+		return false;
+
 	(*packet).GetData((char*)message, message_len);
 
 	CPacket* send_packet = CPacket::Alloc();

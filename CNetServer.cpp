@@ -251,21 +251,26 @@ inline void CNetServer::RunAcceptThread()
 		{
 			unsigned short index;
 #ifdef STACK_INDEX
-			while (!empty_session_stack.Pop(&index))
+			if (!empty_session_stack.Pop(&index))
 			{
+				closesocket(client_sock);
+				continue;
 			}
 #else
 			bool find = false;
-			while (!find)
+			for (index = 0; index < _max_client; index++)
 			{
-				for (index = 0; index < _max_client; index++)
+				if (seesion_arr[index].used == false)
 				{
-					if (seesion_arr[index].used == false)
-					{
-						find = true;
-						break;
-					}
+					find = true;
+					break;
 				}
+			}
+
+			if (!find)
+			{
+				closesocket(client_sock);
+				continue;
 			}
 			session_arr[index].used = true;
 #endif
@@ -347,9 +352,10 @@ inline void CNetServer::RunIoThread()
 		if (cbTransferred == 0 || session->disconnect) // Pending 후 I/O 처리 실패
 		{
 			tracer.trace(78, session, session->session_id);
-			session->disconnect = true;
-			shutdown(session->sock, SD_BOTH);
-		
+			if (!session->disconnect)
+			{
+				Disconnect(session);
+			}
 		}
 		else {
 			OnWorkerThreadBegin();
@@ -391,7 +397,7 @@ inline void CNetServer::RunIoThread()
 					packet->MoveWritePos(header.len);
 					if (!packet->Decode())
 					{
-						CrashDump::Crash();
+						Disconnect(session);
 					}
 
 					QueryPerformanceCounter(&on_recv_st);
@@ -592,10 +598,18 @@ inline void CNetServer::DisconnectSession(unsigned long long session_id)
 		if (session->session_id == id)
 		{
 			session->disconnect = true;
-			shutdown(session->sock, SD_BOTH);
+			CancelIoEx((HANDLE)session->sock, NULL);
 		}
 	}
 	UpdateIOCount(session);
+
+	return;
+}
+
+inline void CNetServer::Disconnect(Session* session)
+{
+	session->disconnect = true;
+	CancelIoEx((HANDLE)session->sock, NULL);
 
 	return;
 }

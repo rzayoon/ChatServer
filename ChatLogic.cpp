@@ -76,25 +76,26 @@ unsigned __stdcall SingleUpdate(void* param)
 
 			user->last_recv_time = GetTickCount64();
 
+			bool result_proc = false;
 			// Packet Proc
 			switch (packet_type)
 			{
 			case en_PACKET_CS_CHAT_REQ_LOGIN:
 			{
 				g_Tracer.trace(10, (PVOID)user->session_id);
-				ProcChatLogin(user, packet);
+				result_proc = ProcChatLogin(user, packet);
 				break;
 			}
 			case en_PACKET_CS_CHAT_REQ_SECTOR_MOVE:
 			{
 				g_Tracer.trace(11, (PVOID)user->session_id);
-				ProcChatSectorMove(user, packet);
+				result_proc = ProcChatSectorMove(user, packet);
 				break;
 			}
 			case en_PACKET_CS_CHAT_REQ_MESSAGE:
 			{
 				g_Tracer.trace(12, (PVOID)user->session_id);
-				ProcChatMessage(user, packet);
+				result_proc = ProcChatMessage(user, packet);
 				break;
 			}
 			case en_PACKET_CS_CHAT_REQ_HEARTBEAT:
@@ -110,6 +111,8 @@ unsigned __stdcall SingleUpdate(void* param)
 			}
 
 			}
+
+			if (!result_proc) g_server.DisconnectSession(user->session_id);
 
 			packet->SubRef();
 
