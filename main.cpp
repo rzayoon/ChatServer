@@ -72,10 +72,12 @@ int main()
 		int job_proc = InterlockedExchange(&g_job_proc, 0);
 
 		g_server.Show();
-		wprintf(L"Connect : %d\n"
+		wprintf(
+			L"JobQueue : %d / %d\n"
+			L"Connect : %d\n"
 			L"Login : %d\n"
 			L"Proc Job/sec : %d\n",
-			g_connect_cnt, g_login_cnt, job_proc);
+			g_JobQueue.GetSize(), MAX_JOB_QUEUE, g_connect_cnt, g_login_cnt, job_proc);
 	}
 
 	timeEndPeriod(1);

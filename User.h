@@ -10,16 +10,10 @@ typedef unsigned long long SS_ID;
 class User
 {
 public:
-	User()
-	{
-		is_login = false;
-		is_in_sector = false;
-		account_no = -1;
-
-	}
+	User();
 	virtual ~User();
 
-	unsigned int GetLastRecvTime()
+	unsigned long long GetLastRecvTime()
 	{
 		return last_recv_time;
 	}

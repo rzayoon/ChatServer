@@ -12,9 +12,9 @@
 class CNetServer
 {
 	enum {
-		ID_MASK = 0xFFFFFFFF,	
+		ID_MASK = 0xFFFFFFFF,
 		INDEX_BIT_SHIFT = 32,
-		MAX_WSABUF = 100
+		MAX_WSABUF = 10
 	};
 
 public:
@@ -26,13 +26,13 @@ public:
 
 	~CNetServer()
 	{
-		if(isRunning)
+		if (isRunning)
 			Stop();
 	}
 
 	bool Start(
-		const wchar_t* ip, unsigned short port, 
-		int iocp_worker, int iocp_active, int max_session, int max_user, 
+		const wchar_t* ip, unsigned short port,
+		int iocp_worker, int iocp_active, int max_session, int max_user,
 		unsigned char packet_key, unsigned char packet_code);
 	void Stop();
 
@@ -51,7 +51,7 @@ public:
 	virtual bool OnConnectionRequest(wchar_t* ip, unsigned short port) = 0;
 	virtual void OnClientJoin(unsigned long long session_id/**/) = 0;
 	virtual void OnClientLeave(unsigned long long session_id) = 0;
-	
+
 	virtual void OnSend(unsigned long long session_id, int send_size) = 0;
 
 
@@ -59,7 +59,7 @@ public:
 	virtual void OnWorkerThreadEnd() = 0;
 
 	virtual void OnError(int errorcode, const wchar_t* msg) = 0;
-	
+
 	void Show();
 
 private:
@@ -75,9 +75,9 @@ private:
 
 protected:
 	unsigned int max_user;
-	
+
 private:
-	bool nagle; 
+	bool nagle;
 
 	// packet
 	unsigned char packet_key;
@@ -93,12 +93,14 @@ private:
 	void RunIoThread();
 
 	bool RecvPost(Session* session);
-	bool SendPost(Session* session);
+	void SendPost(Session* session);
 
 	// libary ³»ºÎ¿ë
 	void Disconnect(Session* session);
 
 	int UpdateIOCount(Session* session);
+	void UpdatePendCount(Session* session);
+	void CancelIOSession(Session* session);
 	void ReleaseSession(Session* session);
 
 	bool exit_flag = false;
@@ -110,7 +112,7 @@ private:
 
 	Session* session_arr;
 	unsigned int m_sess_id = 1;
-	
+
 	Monitor monitor;
 	Tracer tracer;
 

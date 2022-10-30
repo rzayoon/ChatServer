@@ -10,7 +10,6 @@
 #include "CNetServer.h"
 #include "NetProtocol.h"
 #include "CrashDump.h"
-#include "ChatLogic.h"
 
 long long packet_counter[101];
 int log_arr[100];
@@ -29,7 +28,7 @@ bool CNetServer::Start(const wchar_t* _ip, unsigned short _port,
 	max_user = _max_user;
 	wcscpy_s(ip, _ip);
 	port = _port;
-	
+
 	iocp_active = _iocp_active;
 	iocp_worker = _iocp_worker;
 
@@ -44,11 +43,11 @@ bool CNetServer::Start(const wchar_t* _ip, unsigned short _port,
 	session_arr = new Session[max_session];
 
 #ifdef STACK_INDEX
-	for (int i = 0; i < max_session; i++)
+	for (int i = max_session - 1; i >= 0; i--)
 		empty_session_stack.Push(i);
 #endif
-	
-	
+
+
 	WSADATA wsa;
 
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
@@ -97,7 +96,7 @@ void CNetServer::Stop()
 
 	// 종료 메시지 
 	// PostQueuedCompletionStatus 0 0 0
-	
+
 	SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock == INVALID_SOCKET)
 	{
@@ -127,7 +126,7 @@ void CNetServer::Stop()
 	{
 		if (!session_arr[i].release_flag)
 		{
-			DisconnectSession(*(unsigned long long*)&session_arr[i].session_id);
+			DisconnectSession(*(unsigned long long*) & session_arr[i].session_id);
 		}
 	}
 
@@ -146,7 +145,7 @@ void CNetServer::Stop()
 		PostQueuedCompletionStatus(hcp, 0, 0, 0);
 
 	WaitForMultipleObjects(iocp_worker + 1, hExit, TRUE, INFINITE);
-	
+
 	delete[] hExit;
 	delete[] session_arr;
 
@@ -154,7 +153,7 @@ void CNetServer::Stop()
 	WSACleanup();
 
 	isRunning = false;
-	
+
 
 	return;
 }
@@ -211,7 +210,7 @@ inline void CNetServer::RunAcceptThread()
 	// nagle
 	if (nagle)
 		setsockopt(listen_sock, IPPROTO_TCP, TCP_NODELAY, (char*)&nagle, sizeof(nagle));
-	
+
 	// rst
 	LINGER linger;
 	linger.l_linger = 0;
@@ -256,6 +255,7 @@ inline void CNetServer::RunAcceptThread()
 				closesocket(client_sock);
 				continue;
 			}
+
 #else
 			bool find = false;
 			for (index = 0; index < _max_client; index++)
@@ -278,7 +278,9 @@ inline void CNetServer::RunAcceptThread()
 			Session* session = &session_arr[index];
 
 			InterlockedIncrement((LONG*)&session->io_count);
-
+#ifdef DEBUG_SES
+			session->pending_tracer.trace(8, client_sock);
+#endif
 			session->session_id = m_sess_id++;
 			if (m_sess_id == 0) m_sess_id++;
 			*(unsigned*)&session->session_index = index;
@@ -289,22 +291,21 @@ inline void CNetServer::RunAcceptThread()
 			session->send_packet_cnt = 0;
 			session->disconnect = false;
 			//session->send_q.ClearBuffer(); 비어있어야 정상
-			session->recv_q.ClearBuffer(); // 얘는??
+			//session->recv_q.ClearBuffer(); // 얘는??
 
 			CreateIoCompletionPort((HANDLE)client_sock, hcp, (ULONG_PTR)session, 0);
 
 			session->release_flag = 0; // 준비 끝
 
-			tracer.trace(10, session, session->session_id); // accept
+			//tracer.trace(10, session, session->session_id); // accept
 
 			//접속
 			InterlockedIncrement((LONG*)&session_cnt);
 
-			// RecvPost()
-			if (RecvPost(session))
-			{
-				OnClientJoin(*((unsigned long long*)&session->session_id));
-			}
+			// 접속에 대한 처리 먼저 해야 함.
+			OnClientJoin(*((unsigned long long*) & session->session_id));
+
+			RecvPost(session);
 
 			UpdateIOCount(session);
 
@@ -315,7 +316,7 @@ inline void CNetServer::RunAcceptThread()
 		}
 	}
 }
-	
+
 
 inline void CNetServer::RunIoThread()
 {
@@ -326,7 +327,7 @@ inline void CNetServer::RunIoThread()
 	LARGE_INTEGER on_recv_st, on_recv_ed;
 	DWORD error_code;
 
-	
+
 
 	while (1)
 	{
@@ -335,11 +336,13 @@ inline void CNetServer::RunIoThread()
 		Session* session;
 		ret_gqcp = GetQueuedCompletionStatus(hcp, &cbTransferred, (PULONG_PTR)&session, (LPOVERLAPPED*)&overlapped, INFINITE); // overlapped가 null인지 확인 우선
 
+		OnWorkerThreadBegin();
 		if (overlapped == NULL) // deque 실패 1. timeout 2. 잘못 호출(Invalid handle) 3. 임의로 queueing 한 것(PostQueue)
 		{
 			wprintf(L"%d NULL overlapped [error : %d]\n", thread_id, WSAGetLastError());
 			break;
 		}
+
 
 		if (ret_gqcp == 0)
 		{
@@ -348,6 +351,8 @@ inline void CNetServer::RunIoThread()
 			if (error_code != ERROR_NETNAME_DELETED)
 				tracer.trace(00, session, error_code);
 		}
+
+		session->ref_time = GetTickCount64();
 
 		if (cbTransferred == 0 || session->disconnect) // Pending 후 I/O 처리 실패
 		{
@@ -358,12 +363,11 @@ inline void CNetServer::RunIoThread()
 			}
 		}
 		else {
-			OnWorkerThreadBegin();
 			if (&session->recv_overlapped == overlapped) // recv 결과 처리
 			{
 				if (session->recv_sock != session->sock)
 					log_arr[2]++;
-				tracer.trace(21, session, session->session_id);
+				//tracer.trace(21, session, session->session_id);
 				QueryPerformanceCounter(&recv_start);
 
 
@@ -388,7 +392,7 @@ inline void CNetServer::RunIoThread()
 					(*packet)->Decode();
 
 					QueryPerformanceCounter(&on_recv_st);
-					OnRecv(*(unsigned long long*)&session->session_id, packet);
+					OnRecv(*(unsigned long long*) & session->session_id, packet);
 					QueryPerformanceCounter(&on_recv_ed);
 					monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
 #else
@@ -401,7 +405,7 @@ inline void CNetServer::RunIoThread()
 					}
 
 					QueryPerformanceCounter(&on_recv_st);
-					OnRecv(*(unsigned long long*) &session->session_id, packet);
+					OnRecv(*(unsigned long long*) & session->session_id, packet);
 					QueryPerformanceCounter(&on_recv_ed);
 					monitor.AddOnRecvTime(&on_recv_st, &on_recv_ed);
 
@@ -413,7 +417,7 @@ inline void CNetServer::RunIoThread()
 				monitor.AddRecvCompTime(&recv_start, &recv_end);
 				monitor.IncRecv();
 
-				tracer.trace(22, session, session->session_id);
+				//tracer.trace(22, session, session->session_id);
 				RecvPost(session);
 
 			}
@@ -422,18 +426,18 @@ inline void CNetServer::RunIoThread()
 				QueryPerformanceCounter(&send_start);
 				monitor.AddSendToComp(&session->send_time, &send_start);
 
-				OnSend(*(unsigned long long*)&session->session_id, cbTransferred);
+				OnSend(*(unsigned long long*) & session->session_id, cbTransferred);
 				if (session->send_sock != session->sock)
-					log_arr[3]++;
-				tracer.trace(31, session, session->session_id);
-				
+					CrashDump::Crash();
+				//tracer.trace(31, session, session->session_id);
+
 				monitor.UpdateSendPacket(cbTransferred);
 
 				int packet_cnt = session->send_packet_cnt;
 				if (packet_cnt == 0)
 				{
-					log_arr[0]++;
-				}                      
+					CrashDump::Crash();
+				}
 #ifdef AUTO_PACKET				
 				while (packet_cnt > 0)
 				{
@@ -455,14 +459,14 @@ inline void CNetServer::RunIoThread()
 				QueryPerformanceCounter(&send_end);
 				monitor.AddSendCompTime(&send_start, &send_end);
 
-				tracer.trace(32, session, session->session_id);
+				//tracer.trace(32, session, session->session_id);
 				if (session->send_q.GetSize() > 0)
 					SendPost(session);
 
 			}
-			else
+			else // send, recv 다 아님(다른 session의 overlapped 전달)
 			{
-				log_arr[1]++;
+				CrashDump::Crash();
 			}
 		}
 		UpdateIOCount(session);
@@ -543,7 +547,11 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 	Session* session = &session_arr[idx];
 
 	InterlockedIncrement((LONG*)&session->io_count);
-	if (session->release_flag == 0)
+	session->send_packet_time = GetTickCount64();
+#ifdef DEBUG_SES
+	session->pending_tracer.trace(7, 0, GetTickCount64());
+#endif
+	if (session->release_flag == 0 && !session->disconnect)
 	{
 		if (session->session_id == id)
 		{
@@ -566,7 +574,7 @@ bool CNetServer::SendPacket(unsigned long long session_id, CPacket* packet)
 
 
 	if (!ret)   // 필요하지 않은듯
-	{ 
+	{
 		monitor.IncNoSession();
 	}
 
@@ -579,6 +587,8 @@ inline void CNetServer::DisconnectSession(unsigned long long session_id)
 {
 	unsigned short idx = session_id >> INDEX_BIT_SHIFT;
 	unsigned int id = session_id & ID_MASK;
+
+	CrashDump::Crash();
 
 #ifndef STACK_INDEX
 
@@ -597,8 +607,7 @@ inline void CNetServer::DisconnectSession(unsigned long long session_id)
 	{
 		if (session->session_id == id)
 		{
-			session->disconnect = true;
-			CancelIoEx((HANDLE)session->sock, NULL);
+			Disconnect(session);
 		}
 	}
 	UpdateIOCount(session);
@@ -608,8 +617,21 @@ inline void CNetServer::DisconnectSession(unsigned long long session_id)
 
 inline void CNetServer::Disconnect(Session* session)
 {
-	session->disconnect = true;
-	CancelIoEx((HANDLE)session->sock, NULL);
+	//InterlockedIncrement((LONG*)&session->io_count);
+	if (session->disconnect == 0)
+	{
+		if (InterlockedCompareExchange((LONG*)&session->disconnect, true, false) == false) {
+#ifdef DEBUG_SES
+			session->pending_tracer.trace(0, session->sock, GetTickCount64());
+#endif
+			// pending cnt == 0 이면 cancel IO 
+			OnClientLeave(*(unsigned long long*) & session->session_id);
+			CancelIOSession(session);
+
+		}
+
+	}
+	//UpdateIOCount(session);
 
 	return;
 }
@@ -617,159 +639,223 @@ inline void CNetServer::Disconnect(Session* session)
 inline bool CNetServer::RecvPost(Session* session)
 {
 	DWORD recvbytes, flags = 0;
+	bool ret = false;
 
-	int temp = InterlockedIncrement((LONG*)&session->io_count);
-	ZeroMemory(&session->recv_overlapped, sizeof(session->recv_overlapped));
-
-	int emptySize = session->recv_q.GetEmptySize();
-	int size1 = session->recv_q.DirectEnqueSize();
-
-	WSABUF wsabuf[2];
-	int cnt = 1;
-	wsabuf[0].buf = session->recv_q.GetRearPtr();
-	wsabuf[0].len = size1;
-
-	if (size1 < emptySize)
+	int temp_pend = InterlockedIncrement((LONG*)&session->pend_count);
+	if (session->disconnect == 0)
 	{
-		++cnt;
-		wsabuf[1].buf = session->recv_q.GetBufPtr();
-		wsabuf[1].len = emptySize - size1;
-	}
+		InterlockedIncrement((LONG*)&session->io_count);
+		ZeroMemory(&session->recv_overlapped, sizeof(session->recv_overlapped));
 
+		int emptySize = session->recv_q.GetEmptySize();
+		int size1 = session->recv_q.DirectEnqueSize();
 
-	SOCKET socket = session->sock;
-	session->recv_sock = socket;
-	DWORD error_code;
+		WSABUF wsabuf[2];
+		int cnt = 1;
+		wsabuf[0].buf = session->recv_q.GetRearPtr();
+		wsabuf[0].len = size1;
 
-	int retval = WSARecv(socket, wsabuf, cnt, &recvbytes, &flags, &session->recv_overlapped, NULL);
-	if (retval == SOCKET_ERROR)
-	{
-		if ((error_code = WSAGetLastError()) != ERROR_IO_PENDING)
-		{ // 요청이 실패
-			int io_temp = UpdateIOCount(session);
-			tracer.trace(1, session, error_code, socket);
-		}
-		else
+		if (size1 < emptySize)
 		{
-			tracer.trace(73, session, socket);
-			// Pending
-		}
-	}
-	else
-	{
-		tracer.trace(73, session, socket);
-		//동기 recv
-	}
-
-	return true;
-}
-
-inline bool CNetServer::SendPost(Session* session)
-{
-	bool temp;
-	LARGE_INTEGER start, end;
-
-	if ((temp = InterlockedExchange((LONG*)&session->send_flag, true)) == false)
-	{
-		long long buf_cnt = session->send_q.GetSize();
-		if (buf_cnt <= 0)
-		{
-			log_arr[8]++;
-			session->send_flag = false;
-			return true;
-		}
-		int temp = InterlockedIncrement((LONG*)&session->io_count);
-
-		int retval;
-
-		ZeroMemory(&session->send_overlapped, sizeof(session->send_overlapped));
-
-		// 개선 필요
-		if (buf_cnt > MAX_WSABUF)
-			buf_cnt = MAX_WSABUF;
-
-		WSABUF wsabuf[MAX_WSABUF];
-		ZeroMemory(wsabuf, sizeof(wsabuf));
-
-#ifdef AUTO_PACKET
-		PacketPtr packet;
-		for (int cnt = 0; cnt < buf_cnt;)
-		{
-			if (session->send_q.Dequeue(&packet) == false) continue;
-			
-
-			wsabuf[cnt].buf = (*packet)->GetBufferPtrNet();
-			wsabuf[cnt].len = (*packet)->GetDataSizeNet();
-			session->temp_packet[cnt] = packet;
-
 			++cnt;
+			wsabuf[1].buf = session->recv_q.GetBufPtr();
+			wsabuf[1].len = emptySize - size1;
 		}
-#else
-		CPacket* packet;
-		for (int cnt = 0; cnt < buf_cnt;)
-		{
-			if (!session->send_q.Dequeue(&packet)) continue;
-			
-			wsabuf[cnt].buf = packet->GetBufferPtrNet();
-			wsabuf[cnt].len = packet->GetDataSizeNet();
-			session->temp_packet[cnt] = packet;
 
-			++cnt;
-		}
-#endif
 
-		session->send_packet_cnt = buf_cnt;
-		DWORD sendbytes;
-		monitor.IncSend();
-;
 		SOCKET socket = session->sock;
-		session->send_sock = socket;
-		QueryPerformanceCounter(&session->send_time);
-		retval = WSASend(socket, wsabuf, buf_cnt, &sendbytes, 0, &session->send_overlapped, NULL);
-		QueryPerformanceCounter(&end);
-		monitor.AddSendTime(&session->send_time, &end);
-
-
+		session->recv_sock = socket;
 		DWORD error_code;
+
+		int retval = WSARecv(socket, wsabuf, cnt, NULL, &flags, &session->recv_overlapped, NULL);
+
 		if (retval == SOCKET_ERROR)
 		{
-			if ((error_code = WSAGetLastError()) != WSA_IO_PENDING) // 요청 자체가 실패
-			{
-				// 내가 release 시켜야하는 경우 Packet 해제 해줘야 함
+			if ((error_code = WSAGetLastError()) != ERROR_IO_PENDING)
+			{ // 요청이 실패
+				Disconnect(session); // 항상? 10054 일 때만?? 
 				int io_temp = UpdateIOCount(session);
-				tracer.trace(2, session, error_code, socket);
+				tracer.trace(1, session, error_code, socket);
+#ifdef DEBUG_SES
+				session->pending_tracer.trace(1, error_code, socket, GetTickCount64());
+#endif
 			}
 			else
 			{
-				tracer.trace(72, session, socket);
+				//tracer.trace(73, session, socket);
 				// Pending
+#ifdef DEBUG_SES
+				session->pending_tracer.trace(2, error_code, socket, GetTickCount64());
+#endif
+				ret = true;
 			}
 		}
 		else
 		{
-			//동기처리
+#ifdef DEBUG_SES
+			session->pending_tracer.trace(3, 0, socket, GetTickCount64());
+#endif
+			//tracer.trace(73, session, socket);
+			//동기 recv
+			ret = true;
 		}
-
 	}
+	UpdatePendCount(session);
 
-	return temp;
+	return ret;
+}
+
+inline void CNetServer::SendPost(Session* session)
+{
+	LARGE_INTEGER start, end;
+
+	int temp_pend = InterlockedIncrement((LONG*)&session->pend_count);
+	if (session->disconnect == 0)
+	{
+
+		if ((InterlockedExchange((LONG*)&session->send_flag, true)) == false) // compare exchange
+		{
+			long long buf_cnt = session->send_q.GetSize();
+			if (buf_cnt <= 0)
+			{
+				CrashDump::Crash();
+				log_arr[8]++;
+				session->send_flag = false;
+				return;
+			}
+			int temp_io = InterlockedIncrement((LONG*)&session->io_count);
+			int retval;
+
+			ZeroMemory(&session->send_overlapped, sizeof(session->send_overlapped));
+
+			// 개선 필요
+			if (buf_cnt > MAX_WSABUF)
+				buf_cnt = MAX_WSABUF;
+
+			WSABUF wsabuf[MAX_WSABUF];
+			ZeroMemory(wsabuf, sizeof(wsabuf));
+
+#ifdef AUTO_PACKET
+			PacketPtr packet;
+			for (int cnt = 0; cnt < buf_cnt;)
+			{
+				if (session->send_q.Dequeue(&packet) == false) continue;
+
+
+				wsabuf[cnt].buf = (*packet)->GetBufferPtrNet();
+				wsabuf[cnt].len = (*packet)->GetDataSizeNet();
+				session->temp_packet[cnt] = packet;
+
+				++cnt;
+			}
+#else
+			CPacket* packet;
+			for (int cnt = 0; cnt < buf_cnt;)
+			{
+				if (!session->send_q.Dequeue(&packet)) continue;
+
+				wsabuf[cnt].buf = packet->GetBufferPtrNet();
+				wsabuf[cnt].len = packet->GetDataSizeNet();
+				session->temp_packet[cnt] = packet;
+
+				++cnt;
+			}
+#endif
+
+			session->send_packet_cnt = buf_cnt;
+			DWORD sendbytes;
+			monitor.IncSend();
+
+			SOCKET socket = session->sock;
+			session->send_sock = socket;
+			QueryPerformanceCounter(&session->send_time);
+			retval = WSASend(socket, wsabuf, buf_cnt, NULL, 0, &session->send_overlapped, NULL);
+			QueryPerformanceCounter(&end);
+			monitor.AddSendTime(&session->send_time, &end);
+
+			DWORD error_code;
+			if (retval == SOCKET_ERROR)
+			{
+				if ((error_code = WSAGetLastError()) != WSA_IO_PENDING) // 요청 자체가 실패
+				{
+					// 내가 release 시켜야하는 경우 Packet 해제 해줘야 함
+					Disconnect(session);
+					int io_temp = UpdateIOCount(session);
+					tracer.trace(2, session, error_code, socket);
+#ifdef DEBUG_SES
+					session->pending_tracer.trace(11, error_code, socket, GetTickCount64());
+#endif
+				}
+				else
+				{
+					//tracer.trace(72, session, socket);
+					// Pending
+#ifdef DEBUG_SES
+					session->pending_tracer.trace(12, error_code, socket, GetTickCount64());
+#endif
+				}
+			}
+			else
+			{
+				//동기처리
+#ifdef DEBUG_SES
+				session->pending_tracer.trace(13, 0, socket, GetTickCount64());
+#endif
+			}
+		}
+	}
+	UpdatePendCount(session);
+
+
+	return;
 }
 
 inline int CNetServer::UpdateIOCount(Session* session)
 {
 	int temp;
-	tracer.trace(76, session, session->session_id);
+	//tracer.trace(76, session, session->session_id);
 	if ((temp = InterlockedDecrement((LONG*)&session->io_count)) == 0)
 	{
 		ReleaseSession(session);
 	}
-	if (temp < 0)
+	else if (temp < 0)
 	{
-		log_arr[8]++;
+		CrashDump::Crash();
 	}
 
 	return temp;
 }
+
+inline void CNetServer::UpdatePendCount(Session* session)
+{
+	// disconnect 한번에 확인
+	int temp;
+	if ((temp = InterlockedDecrement((LONG*)&session->pend_count)) == 0)
+	{
+		CancelIOSession(session);
+	}
+
+	return;
+
+}
+
+void CNetServer::CancelIOSession(Session* session)
+{
+	unsigned long long flag = *((unsigned long long*)(&session->pend_count));
+	if (flag == 0x100000000)
+	{
+		if (InterlockedCompareExchange64((LONG64*)&session->pend_count, 0x200000000, flag) == flag)
+		{
+#ifdef DEBUG_SES
+			session->pending_tracer.trace(9, session->sock, GetTickCount64());
+#endif
+			CancelIoEx((HANDLE)session->sock, NULL);
+		}
+	}
+
+	return;
+}
+
 
 inline void CNetServer::ReleaseSession(Session* session)
 {
@@ -781,9 +867,13 @@ inline void CNetServer::ReleaseSession(Session* session)
 		{
 
 			tracer.trace(75, session, session->session_id, session->sock);
-			
-			OnClientLeave(*(unsigned long long*)&session->session_id);
-			
+#ifdef DEBUG_SES
+			session->pending_tracer.trace(99, session->sock);
+#endif
+			if (session->disconnect != 2) CrashDump::Crash(); // pending 있는 상태에서 삭제 여부
+
+
+
 			session->session_id = 0;
 
 
@@ -814,7 +904,7 @@ inline void CNetServer::ReleaseSession(Session* session)
 
 			closesocket(session->sock);
 			session->sock = INVALID_SOCKET;
-			
+
 
 
 #ifdef STACK_INDEX
@@ -829,8 +919,10 @@ inline void CNetServer::ReleaseSession(Session* session)
 	return;
 }
 
+
+
 void CNetServer::Show()
 {
-	monitor.Show(session_cnt, CPacket::GetUsePool(), g_JobQueue.GetSize());
+	monitor.Show(session_cnt, CPacket::GetUsePool());
 	return;
 }

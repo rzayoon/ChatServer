@@ -34,12 +34,12 @@ unsigned __stdcall SingleUpdate(void* param)
 {
 	JOB* job;
 	bool ret_deq;
-	DWORD oldTick = GetTickCount64();;
+	ULONGLONG oldTick = GetTickCount64();
 	while (true)
 	{
 		// time out 
-		DWORD nowTick = GetTickCount64();
-		DWORD diffTick = nowTick - oldTick;
+		ULONGLONG nowTick = GetTickCount64();
+		ULONGLONG diffTick = nowTick - oldTick;
 		if (diffTick >= 1000)
 		{
 
