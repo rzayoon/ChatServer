@@ -27,9 +27,9 @@ class MemoryPoolTls
 	{
 	public:
 
-		POOL(int _block_num, int _default_size = DEFAULT_SIZE, bool _placement_new = false)
+		POOL(int _init_size, int _default_size, bool _placement_new)
 		{
-			size = _block_num;
+			size = _init_size;
 			default_size = _default_size;
 			placement_new = _placement_new;
 
@@ -164,6 +164,7 @@ public:
 		placement_new = _placement_new;
 
 		use_size = 0;
+		chunk_cnt = 0;
 		default_size = _default_size;
 	}
 
@@ -202,8 +203,8 @@ public:
 		if (td == nullptr)
 		{
 			td = new THREAD_DATA;
-			td->pool = new POOL(default_size, default_size);
-			td->chunk = new POOL(0, default_size);
+			td->pool = new POOL(default_size, default_size, placement_new);
+			td->chunk = new POOL(0, default_size, placement_new);
 			TlsSetValue(tls_index, (LPVOID)td);
 		}
 
@@ -211,12 +212,19 @@ public:
 		BLOCK_NODE* chunk_top;
 		// 할당
 		POOL* td_pool = td->pool;
-		
 		DATA* ret;
 		if (td_pool->size == 0) // 풀 다 쓴 경우
 		{
-			if (chunk_pool.Pop(&chunk_top))
+			POOL* td_chunk = td->chunk;
+			if (td_chunk->size != 0) // 스레드에서 모은거 사용
+			{
+				td_pool->top = td_chunk->top;
+				td_pool->size = td_chunk->size;
+				td_chunk->size = 0;
+			}
+			else if (chunk_pool.Pop(&chunk_top))
 			{ // 가용 청크 가져옴
+				InterlockedIncrement((LONG*)&chunk_cnt);
 				td_pool->top = chunk_top;
 				td_pool->size = default_size;
 
@@ -229,6 +237,9 @@ public:
 		}
 		ret = (DATA*)td_pool->Alloc();
 		
+		if (placement_new)
+			new(ret) DATA;
+
 		InterlockedIncrement((LONG*)&use_size);
 		
 
@@ -251,6 +262,9 @@ public:
 		POOL* td_pool = td->pool;
 		POOL* td_chunk = td->chunk;
 
+		if (placement_new)
+			data->~DATA();
+
 		if (td_pool->size == size) //풀 초과분
 		{
 			td_chunk->Free((BLOCK_NODE*)data);
@@ -258,6 +272,7 @@ public:
 			if (td_chunk->size == size) //청크도 꽉참
 			{
 				chunk_pool.Push(td_chunk->top);
+				InterlockedIncrement((LONG*)&chunk_cnt);
 				td_chunk->Clear();
 			}
 		}
@@ -281,7 +296,9 @@ private:
 	LockFreeStack<BLOCK_NODE*> chunk_pool = LockFreeStack<BLOCK_NODE*>(0);
 
 	alignas(64) int use_size;
+	alignas(64) int chunk_cnt;
 	alignas(64) int tls_index;
 	bool placement_new;
 	int default_size;
+	int a = 0;
 };

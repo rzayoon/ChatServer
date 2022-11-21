@@ -12,6 +12,7 @@ ChatServer::ChatServer()
 {
 	m_hSingleThread = (HANDLE)_beginthreadex(nullptr, 0, SingleUpdate, nullptr, 0, nullptr);
 
+	max_user = 15000;
 }
 
 

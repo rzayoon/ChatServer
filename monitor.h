@@ -60,7 +60,7 @@ public:
 	void UpdateMaxThread(int max);
 	void UpdateSendPacket(LONG size);
 
-	void Show(int session_cnt, int packet_pool);
+	void Show(int session_cnt, int packet_pool, int job_queue);
 
 private:
 

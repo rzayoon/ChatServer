@@ -27,7 +27,7 @@ private:
 
 	HANDLE m_hSingleThread;
 
-
+	int max_user;
 };
 
 extern ChatServer g_server;

@@ -74,7 +74,6 @@ unsigned __stdcall SingleUpdate(void* param)
 			
 			User* user = g_UserMap[sid];
 
-			user->last_recv_time = GetTickCount64();
 
 			bool result_proc = false;
 			// Packet Proc
